@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.gumiho.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "WeatherRendererMixin",
+    "RainParticlesMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,11 @@
+# Replace this hostname in BOTH this file and /etc/gumiho-link/relay.json.
+link.example.com {
+    reverse_proxy 127.0.0.1:8791
+
+    header {
+        -Server
+        Cache-Control "no-store"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+    }
+}

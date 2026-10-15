@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="gumiho_link"
+version="${mod_version}"
+displayName="GUMIHO Link | 구미호"
+authors="MystF"
+description="Opt-in teammate sharing. Local development candidate; no combat automation."
+
+[[dependencies.gumiho_link]]
+modId="neoforge"
+type="required"
+versionRange="[${neo_version},)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.gumiho_link]]
+modId="minecraft"
+type="required"
+versionRange="${minecraft_version_range}"
+ordering="NONE"
+side="CLIENT"

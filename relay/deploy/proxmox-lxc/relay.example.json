@@ -1,0 +1,7 @@
+{
+  "bootstrapFile": "/var/lib/gumiho-link/private-bootstrap.json",
+  "membershipFile": "/var/lib/gumiho-link/private-membership.json",
+  "port": 8791,
+  "publicHosts": ["link.example.com"],
+  "trustProxy": true
+}

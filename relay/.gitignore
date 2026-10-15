@@ -1,0 +1,4 @@
+private-*.json
+*.tmp
+node_modules/
+coverage/

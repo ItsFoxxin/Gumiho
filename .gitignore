@@ -1,0 +1,29 @@
+# Gradle and IDE output
+**/.gradle/
+**/build/
+**/run/
+**/out/
+**/.idea/
+*.iml
+
+# Relay runtime state and secrets
+**/node_modules/
+relay/data/
+relay/backups/
+relay/logs/
+relay/private-*.json
+private-*.json
+.env
+.env.*
+!.env.example
+
+# Generated release material
+dist/
+artifacts/
+*.log
+*.tmp
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini

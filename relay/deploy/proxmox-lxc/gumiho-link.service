@@ -1,0 +1,44 @@
+[Unit]
+Description=GUMIHO Link private team relay
+Documentation=file:/opt/gumiho-link/relay/OPERATIONS.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gumiho-link
+Group=gumiho-link
+WorkingDirectory=/opt/gumiho-link/relay
+ExecStart=/usr/bin/node /opt/gumiho-link/relay/src/main.mjs --config /etc/gumiho-link/relay.json
+ExecStartPost=/bin/sh -c 'for attempt in 1 2 3 4 5; do /usr/bin/node /opt/gumiho-link/relay/src/healthcheck.mjs /etc/gumiho-link/relay.json && exit 0; sleep 1; done; exit 1'
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=15
+TimeoutStopSec=10
+UMask=0077
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadOnlyPaths=/etc/gumiho-link
+ReadWritePaths=/var/lib/gumiho-link
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target

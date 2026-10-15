@@ -1,0 +1,139 @@
+name: Stable Release CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stable-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  policy:
+    name: Version and repository policy
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - id: version
+        name: Enforce the version contract
+        shell: bash
+        run: |
+          node scripts/check-version.mjs
+          echo "version=$(tr -d '\r\n' < VERSION)" >> "$GITHUB_OUTPUT"
+      - run: node scripts/check-repository.mjs
+
+  relay:
+    name: Relay release verification
+    needs: policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Run all relay tests
+        working-directory: relay
+        run: npm test
+      - id: package
+        name: Package the relay and checksum
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          version="${{ needs.policy.outputs.version }}"
+          stage="$RUNNER_TEMP/gumiho-link-relay-$version"
+          archive="$RUNNER_TEMP/gumiho-link-relay-$version.zip"
+          cp -R relay "$stage"
+          find "$stage" -type d -name node_modules -prune -exec rm -rf {} +
+          (cd "$RUNNER_TEMP" && zip -qr "$(basename "$archive")" "$(basename "$stage")")
+          (cd "$RUNNER_TEMP" && sha256sum "$(basename "$archive")" > "$(basename "$archive").sha256")
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "checksum=$archive.sha256" >> "$GITHUB_OUTPUT"
+      - name: Upload relay artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gumiho-link-relay-${{ needs.policy.outputs.version }}-run-${{ github.run_number }}
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.checksum }}
+          if-no-files-found: error
+          retention-days: 30
+
+  client:
+    name: Release client - Minecraft ${{ matrix.minecraft }}
+    needs: policy
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - minecraft: '1.21.1'
+            java: '21'
+            project: clients/mc1.21.1
+          - minecraft: '26.2'
+            java: '25'
+            project: clients/mc26.2
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+      - name: Clean build, full regression, and Java-to-relay integration
+        working-directory: ${{ matrix.project }}
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon \
+            -PlinkNode="$(command -v node)" \
+            -PlinkFixture="$GITHUB_WORKSPACE/relay/fixtures/java-fixture.mjs" \
+            clean check linkIntegration assemble
+      - name: Inspect full and Link-only JAR contents
+        run: node scripts/verify-jars.mjs "${{ matrix.project }}" "${{ matrix.minecraft }}"
+      - id: package
+        name: Give artifacts stable, versioned names and checksums
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          version="${{ needs.policy.outputs.version }}"
+          dist="$RUNNER_TEMP/gumiho-mc${{ matrix.minecraft }}"
+          mkdir -p "$dist"
+          cp "${{ matrix.project }}/build/libs/gumiho-neoforge-$version.jar" \
+            "$dist/gumiho-neoforge-$version-mc${{ matrix.minecraft }}.jar"
+          cp "${{ matrix.project }}/build/libs/gumiho-link-$version.jar" \
+            "$dist/gumiho-link-$version-mc${{ matrix.minecraft }}.jar"
+          printf 'version=%s\nminecraft=%s\ncommit=%s\nrun=%s\n' \
+            "$version" "${{ matrix.minecraft }}" "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" \
+            > "$dist/BUILD-INFO.txt"
+          (cd "$dist" && sha256sum *.jar > SHA256SUMS.txt)
+          echo "dist=$dist" >> "$GITHUB_OUTPUT"
+      - name: Upload versioned client artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gumiho-${{ needs.policy.outputs.version }}-mc${{ matrix.minecraft }}-run-${{ github.run_number }}
+          path: ${{ steps.package.outputs.dist }}
+          if-no-files-found: error
+          retention-days: 30

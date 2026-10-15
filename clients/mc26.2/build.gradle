@@ -1,0 +1,140 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.144'
+    id 'idea'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = 'gumiho-neoforge'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+neoForge {
+    version = project.neo_version
+
+
+    runs {
+        client { client() }
+
+        configureEach {
+            logLevel = org.slf4j.event.Level.INFO
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    filteringCharset = 'UTF-8'
+    var replaceProperties = [
+            minecraft_version_range: minecraft_version_range,
+            neo_version: neo_version,
+            loader_version_range: loader_version_range,
+            mod_id: mod_id,
+            mod_name: mod_name,
+            mod_license: mod_license,
+            mod_version: mod_version
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/gumihoMetadata'
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xmaxerrs', '500'])
+}
+
+tasks.register('combatRegression', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.gumiho.client.module.combat.CombatRegressionTest'
+}
+dependencies { testImplementation 'com.google.code.gson:gson:2.10.1' }
+
+tasks.register('presetRegression', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.gumiho.client.profile.PresetRegressionTest'
+}
+tasks.named('check') { dependsOn tasks.named('combatRegression'), tasks.named('presetRegression') }
+// These are executable assertion suites, not JUnit tests; check runs combatRegression above.
+tasks.named('test') { failOnNoDiscoveredTests = false }
+
+tasks.named('jar', Jar) {
+    // Do not ship synchronization-conflict copies left in generated build directories.
+    exclude { details -> details.path.contains('Name clash') }
+    manifest.attributes(
+            'Implementation-Title': 'GUMIHO | 구미호',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'MystF'
+    )
+}
+
+tasks.register('compileStartupRegression', JavaCompile) {
+    source fileTree('src/startupTest/java'), files(
+        'src/main/java/dev/gumiho/client/config/GumihoConfig.java',
+        'src/main/java/dev/gumiho/client/security/ServerPolicy.java',
+        'src/main/java/dev/gumiho/client/module/ModuleCategory.java',
+        'src/main/java/dev/gumiho/client/module/GumihoModule.java',
+        'src/main/java/dev/gumiho/client/module/ModuleManager.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('startup-regression')
+    options.encoding = 'UTF-8'
+}
+tasks.register('startupRegression', JavaExec) {
+    dependsOn tasks.named('compileStartupRegression')
+    classpath = files(layout.buildDirectory.dir('startup-regression'))
+    mainClass = 'dev.gumiho.client.module.StartupRegressionTest'
+}
+tasks.named('check') { dependsOn tasks.named('startupRegression') }
+
+tasks.register('hudThemeRegression', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.gumiho.client.gui.HudThemeRegressionTest'
+    workingDir project.projectDir
+}
+tasks.named('check') { dependsOn tasks.named('hudThemeRegression') }
+tasks.register('generateLinkMetadata', ProcessResources) {
+    filteringCharset = 'UTF-8'
+    expand mod_version: mod_version, mod_license: mod_license,
+        neo_version: neo_version, loader_version_range: loader_version_range,
+        minecraft_version_range: minecraft_version_range
+    from 'src/linkTemplates'
+    into 'build/generated/linkMetadata'
+}
+tasks.register('linkOnlyJar', Jar) {
+    dependsOn tasks.named('classes'), tasks.named('generateLinkMetadata')
+    archiveBaseName = 'gumiho-link'
+    from(sourceSets.main.output) { include 'dev/gumiho/link/**', 'assets/gumiho_link/**' }
+    from 'build/generated/linkMetadata'
+    exclude { details -> details.path.contains('Name clash') }
+    manifest.attributes('Implementation-Title': 'GUMIHO Link', 'Implementation-Version': project.version)
+}
+tasks.named('assemble') { dependsOn tasks.named('linkOnlyJar') }
+tasks.register('linkRegression', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.gumiho.link.LinkRegressionTest'
+}
+tasks.register('linkIntegration', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.gumiho.link.LinkRegressionTest'
+    args providers.gradleProperty('linkNode').get(), providers.gradleProperty('linkFixture').get()
+}
+tasks.named('check') { dependsOn tasks.named('linkRegression') }
