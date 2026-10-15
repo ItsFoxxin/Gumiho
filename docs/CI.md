@@ -14,11 +14,11 @@ This is the quick integration layer. It intentionally does not publish downloada
 
 ## Stable Release CI
 
-Triggers on pull requests and pushes to `master`, and can be run manually.
+Triggers on pull requests and pushes to `main`, and can be run manually.
 
 It repeats policy checks, then performs clean client builds, every regression suite, the Java-to-Node Link fixture, and JAR-content inspection. The Link-only JAR is rejected if it accidentally contains the full client's modules or assets.
 
-On a `master` push (or a manual run), CI uploads:
+On a `main` push (or a manual run), CI uploads:
 
 - full GUMIHO and Link-only JARs for Minecraft 1.21.1;
 - full GUMIHO and Link-only JARs for Minecraft 26.2;

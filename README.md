@@ -40,8 +40,8 @@ npm test
 ## Branch and release flow
 
 - Work lands on `dev`, where GitHub Actions validates version consistency, the relay, and both Minecraft clients.
-- A pull request from `dev` to `master` runs the stricter clean-build and cross-runtime integration gate.
-- A successful push to `master` produces versioned JAR/relay artifacts and SHA-256 manifests.
+- A pull request from `dev` to `main` runs the stricter clean-build and cross-runtime integration gate.
+- A successful push to `main` produces versioned JAR/relay artifacts and SHA-256 manifests.
 
 See [CI gates](docs/CI.md) and [versioning policy](docs/VERSIONING.md).
 

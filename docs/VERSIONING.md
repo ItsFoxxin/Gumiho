@@ -27,6 +27,6 @@ The current `0.9.5-link.3` value is a valid SemVer prerelease. Stable tags use `
 ## Branch layers
 
 - `dev`: integration branch. Every push compiles both Minecraft targets, runs all client regression harnesses, runs relay tests, and validates repository/version policy.
-- `master`: stable branch. Pull requests and pushes receive a clean build plus all regression checks and Java-to-relay integration. A push to `master` also creates versioned full-client, Link-only, and relay artifacts with SHA-256 manifests.
+- `main`: stable and default branch. Pull requests and pushes receive a clean build plus all regression checks and Java-to-relay integration. A push to `main` also creates versioned full-client, Link-only, and relay artifacts with SHA-256 manifests.
 
 Do not commit generated JARs. GitHub Actions builds them from the reviewed source tree.
